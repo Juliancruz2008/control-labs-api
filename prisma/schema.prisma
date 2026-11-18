@@ -1,0 +1,49 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id              String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email           String     @unique @db.VarChar(255)
+  nombre          String     @db.VarChar(150)
+  rol             String     @db.VarChar(20)
+  activo          Boolean    @default(true)
+  createdAt       DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  instructorLoans Loan[]     @relation("LoanInstructor")
+  guardLoans      Loan[]     @relation("LoanGuard")
+
+  @@map("users")
+}
+
+model Room {
+  id           String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  nombre       String      @unique @db.VarChar(100)
+  bloque       String      @db.VarChar(50)
+  capacidadPcs Int         @map("capacidad_pcs")
+  estado       String      @default("OPERATIVO") @db.VarChar(20)
+  loans        Loan[]
+
+  @@map("rooms")
+}
+
+model Loan {
+  id           BigInt    @id @default(autoincrement())
+  roomId       String    @map("room_id") @db.Uuid
+  instructorId String    @map("instructor_id") @db.Uuid
+  guardaId     String    @map("guarda_id") @db.Uuid
+  numeroPc     Int       @map("numero_pc")
+  estado       String    @default("PENDIENTE_APROBACION") @db.VarChar(24)
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  acceptedAt   DateTime? @map("accepted_at") @db.Timestamptz(6)
+  room         Room      @relation(fields: [roomId], references: [id], onDelete: Restrict)
+  instructor   User      @relation("LoanInstructor", fields: [instructorId], references: [id], onDelete: Restrict)
+  guard        User      @relation("LoanGuard", fields: [guardaId], references: [id], onDelete: Restrict)
+
+  @@index([roomId, createdAt(sort: Desc)], map: "idx_loans_room_created")
+  @@map("loans")
+}
